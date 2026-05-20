@@ -75,11 +75,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'edutdahdb',  # El nombre que le diste en PostgreSQL
-        'USER': 'postgres',     # Usualmente 'postgres'
+        'NAME': 'edutdahdb',  
+        'USER': 'postgres',     
         'PASSWORD': 'cafesito',
-        'HOST': 'localhost',                  # O la IP de tu servidor de BD
-        'PORT': '5432',                       # Puerto por defecto de PostgreSQL
+        'HOST': 'localhost',                
+        'PORT': '5432',     
     }
 }
 
