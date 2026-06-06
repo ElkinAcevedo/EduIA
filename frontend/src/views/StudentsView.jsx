@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, UserPlus, Users, AlertCircle, CheckCircle, X } from 'lucide-react'
+import { Search, UserPlus, Users, AlertCircle, CheckCircle, X, Trash2 } from 'lucide-react'
 import StudentCard from '../components/StudentCard'
 
 // Adapta la respuesta del backend al shape que espera el frontend
@@ -60,6 +60,56 @@ function AlertSummaryBar({ students }) {
     </div>
   )
 }
+
+//notificacion de confirmacion 
+function ConfirmDeleteModal({ student, onConfirm, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 z-10">
+        
+        {/* Icono */}
+        <div className="flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
+            <Trash2 size={24} strokeWidth={1.8} className="text-red-500" />
+          </div>
+        </div>
+
+        {/* Texto */}
+        <div className="text-center mb-6">
+          <h3
+            className="text-lg font-bold text-slate-800 mb-2"
+            style={{ fontFamily: "'Poppins', sans-serif" }}
+          >
+            Eliminar estudiante
+          </h3>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            ¿Estás seguro de que deseas eliminar a{' '}
+            <span className="font-semibold text-slate-700">{student.name}</span>?
+            Esta acción no se puede deshacer.
+          </p>
+        </div>
+
+        {/* Acciones */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 shadow-sm shadow-red-200 transition-all"
+          >
+            Sí, eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-componente: modal "Agregar estudiante" (placeholder UI)
@@ -509,14 +559,22 @@ export default function StudentsView() {
   const handleStudentAdded = (newStudentRaw) => {
   setStudents((prev) => [...prev, mapStudent(newStudentRaw)])
 }
- const [editingStudent, setEditingStudent] = useState(null)   // ← nuevo
+ const [editingStudent, setEditingStudent] = useState(null)   
 
  const handleStudentUpdated = (updatedRaw) => {
   setStudents((prev) =>
     prev.map((s) => s.id === updatedRaw.id ? mapStudent(updatedRaw) : s)
   )
  }
-
+const [deletingStudent, setDeletingStudent] = useState(null)
+const handleStudentDeleted = () => {
+  api.delete(`/students/${deletingStudent.id}/`)
+    .then(() => {
+      setStudents((prev) => prev.filter((s) => s.id !== deletingStudent.id))
+      setDeletingStudent(null)
+    })
+    .catch(() => setDeletingStudent(null))
+}
   // ── Carga desde la API ──────────────────────────────────────────────────────
 useEffect(() => {
   api.get('/students/')
@@ -652,13 +710,14 @@ useEffect(() => {
 	  {filtered.length > 0 ? (
 	   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 	     {filtered.map((student) => (
-			  <StudentCard
-			  key={student.id}
-			  student={student}
-			  onView={() => navigate(`/students/${student.id}`)}
-			  onAssistant={() => navigate(`/assistant?student=${student.id}`)}
-			  onEdit={() => setEditingStudent(student)}    // ← nuevo
-			  />            
+		     <StudentCard
+		     key={student.id}
+		     student={student}
+		     onView={() => navigate(`/logbook?student=${student.id}`)}
+		     onAssistant={() => navigate(`/assistant?student=${student.id}`)}
+		     onEdit={() => setEditingStudent(student)}
+		     onDelete={() => setDeletingStudent(student)}
+	/>          
 		  ))}
           </div>
         ) : (
@@ -704,6 +763,15 @@ useEffect(() => {
           onStudentUpdated={handleStudentUpdated}
         />
       )}
+
+      {deletingStudent && (
+  <ConfirmDeleteModal
+    student={deletingStudent}
+    onConfirm={handleStudentDeleted}
+    onClose={() => setDeletingStudent(null)}
+  />
+)}
+
     </>
   )
 }
