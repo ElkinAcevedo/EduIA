@@ -1,65 +1,23 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import api from '../api'
 import {
-  Bot,
-  Send,
-  Trash2,
-  ChevronDown,
-  AlertCircle,
-  Zap,
-  User,
-  BookOpenCheck,
+  Bot, Send, Trash2, ChevronDown, AlertCircle, Zap, User, BookOpenCheck,
 } from 'lucide-react'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — reemplazar con api.get('/students/') y api.post('/assistant/chat/')
-// ─────────────────────────────────────────────────────────────────────────────
-const MOCK_STUDENTS = [
-  {
-    id: 1,
-    name: 'Mateo Gómez',
-    initials: 'MG',
-    avatarGradient: 'from-rose-400 to-pink-500',
-    type: 'TDAH Combinado',
-    age: 8,
-    attention: 55,
-    strengths: ['Visual', 'Creativo'],
-    alerts: 3,
-  },
-  {
-    id: 2,
-    name: 'Sofía Vargas',
-    initials: 'SV',
-    avatarGradient: 'from-sky-400 to-blue-500',
-    type: 'TDAH Inatento',
-    age: 9,
-    attention: 78,
-    strengths: ['Visual', 'Artística'],
-    alerts: 1,
-  },
-  {
-    id: 3,
-    name: 'Luca Pérez',
-    initials: 'LP',
-    avatarGradient: 'from-emerald-400 to-teal-500',
-    type: 'TDAH Hiperactivo',
-    age: 8,
-    attention: 62,
-    strengths: ['Kinestésico', 'Matemático'],
-    alerts: 0,
-  },
-  {
-    id: 4,
-    name: 'Ale Torres',
-    initials: 'AT',
-    avatarGradient: 'from-violet-400 to-purple-500',
-    type: 'TDAH Combinado',
-    age: 9,
-    attention: 41,
-    strengths: ['Sensible', 'Musical'],
-    alerts: 2,
-  },
-]
+
+const mapStudent = (s) => ({
+  id:             s.id,
+  name:           s.nombre,
+  initials:       s.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+  avatarGradient: 'from-indigo-400 to-violet-500',
+  type:           `TDAH ${s.tipo_tdah}`,
+  age:            s.edad,
+  attention:      s.atencion_promedio ?? 0,
+  strengths:      s.fortalezas ?? [],
+  alerts:         s.alertas ?? 0,
+})
+
 
 // Consultas rápidas contextuales por estudiante (se pueden extender por perfil)
 const QUICK_QUESTIONS = [
@@ -257,36 +215,50 @@ function ContextPanel({ students, selectedId, onSelectStudent, onQuickQuestion }
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AssistantView() {
   const [searchParams] = useSearchParams()
-  const initialId = Number(searchParams.get('student')) || MOCK_STUDENTS[0].id
 
-  const [selectedId, setSelectedId] = useState(initialId)
-  const [messages,   setMessages]   = useState(() => [buildWelcomeMessage(MOCK_STUDENTS[0])])
+  const [students,   setStudents]   = useState([])
+  const [selectedId, setSelectedId] = useState(Number(searchParams.get('student')) || null)
+  const [messages,   setMessages]   = useState([])
   const [input,      setInput]      = useState('')
   const [loading,    setLoading]    = useState(false)
 
   const messagesEndRef = useRef(null)
   const inputRef       = useRef(null)
-  const student        = MOCK_STUDENTS.find((s) => s.id === selectedId)
 
-  // Auto-scroll al último mensaje
+  const student = students.find((s) => s.id === selectedId) ?? null
+
+  // Carga estudiantes
+  useEffect(() => {
+    api.get('/students/')
+      .then((res) => {
+        const mapped = res.data.map(mapStudent)
+        setStudents(mapped)
+        if (!selectedId && mapped.length > 0) {
+          setSelectedId(mapped[0].id)
+        }
+      })
+      .catch(console.error)
+  }, [])
+
+  // Mensaje de bienvenida cuando cambia el estudiante
+  useEffect(() => {
+    if (!student) return
+    setMessages([buildWelcomeMessage(student)])
+  }, [selectedId])
+
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
-
-  // Cambio de estudiante → resetear chat con nuevo mensaje de bienvenida
+  }, [messages, loading])  // Cambio de estudiante → resetear chat con nuevo mensaje de bienvenida
   const handleSelectStudent = useCallback((id) => {
     setSelectedId(id)
-    const s = MOCK_STUDENTS.find((st) => st.id === id)
-    setMessages([buildWelcomeMessage(s)])
     setInput('')
     inputRef.current?.focus()
   }, [])
 
-  // Enviar mensaje
-  // En producción: reemplazar el setTimeout por api.post('/assistant/chat/', { studentId, message })
   const handleSend = useCallback(async (text) => {
     const trimmed = (text ?? input).trim()
-    if (!trimmed || loading) return
+    if (!trimmed || loading || !student) return
 
     const userMsg = { id: Date.now(), role: 'user', text: trimmed }
     setMessages((prev) => [...prev, userMsg])
@@ -294,39 +266,58 @@ export default function AssistantView() {
     setLoading(true)
     inputRef.current?.focus()
 
-    // ── MOCK RESPONSE — reemplazar con llamada real al backend Django ──────
-    setTimeout(() => {
+    // Historial para mandar al backend (excluye el mensaje de bienvenida)
+    const history = messages
+      .filter((m) => m.role === 'user' || (m.role === 'ai' && m.id !== messages[0]?.id))
+      .map((m) => ({ role: m.role, text: m.text }))
+
+    try {
+      const res = await api.post('/assistant/chat/', {
+        studentId: student.id,
+        message:   trimmed,
+        history,
+      })
       const aiMsg = {
-        id: Date.now() + 1,
+        id:   Date.now() + 1,
         role: 'ai',
-        text: `Basado en el perfil de **${student.name}** (${student.type}) y tu consulta, te recomiendo:\n\n1. Segmentar la actividad en bloques de 10 minutos con pausas activas breves.\n2. Usar apoyos visuales como diagramas o colores para anclar la atención.\n3. Reforzar positivamente cada logro parcial para sostener la motivación.`,
+        text: res.data.reply,
         hint: '💡 Registra el resultado en la bitácora para que la IA aprenda del patrón.',
       }
       setMessages((prev) => [...prev, aiMsg])
+    } catch (err) {
+      setMessages((prev) => [...prev, {
+        id:   Date.now() + 1,
+        role: 'ai',
+        text: 'Ocurrió un error al consultar el asistente. Intenta de nuevo.',
+      }])
+    } finally {
       setLoading(false)
-    }, 1500)
-    // ──────────────────────────────────────────────────────────────────────
-  }, [input, loading, student])
+    }
+  }, [input, loading, student, messages])
 
-  // Consulta rápida: inyecta el texto limpio (sin emoji) al chat
   const handleQuickQuestion = useCallback((q) => {
     const clean = q.replace(/^[\p{Emoji}\s]+/u, '').trim()
     handleSend(clean)
   }, [handleSend])
 
-  // Limpiar chat
   const handleClear = () => {
-    setMessages([buildWelcomeMessage(student)])
+    if (student) setMessages([buildWelcomeMessage(student)])
     inputRef.current?.focus()
   }
 
-  // Enter → enviar
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
   }
+
+  if (!student) return (
+    <div className="flex items-center justify-center py-32">
+      <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+    </div>
+  )
+
 
   return (
     <div className="flex flex-col gap-6 h-full">
@@ -353,7 +344,7 @@ export default function AssistantView() {
         {/* Panel lateral (1/3) — oculto en mobile */}
         <div className="hidden lg:block overflow-hidden">
           <ContextPanel
-            students={MOCK_STUDENTS}
+            students={students}
             selectedId={selectedId}
             onSelectStudent={handleSelectStudent}
             onQuickQuestion={handleQuickQuestion}
@@ -385,9 +376,9 @@ export default function AssistantView() {
                 onChange={(e) => handleSelectStudent(Number(e.target.value))}
                 className="appearance-none text-xs border border-slate-200 rounded-xl px-3 py-2 pr-7 text-slate-600 bg-slate-50 outline-none"
               >
-                {MOCK_STUDENTS.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
+                {students.map((s) => (
+                 <option key={s.id} value={s.id}>{s.name}</option>
+               ))}
               </select>
               <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>

@@ -26,6 +26,7 @@ const mapEntry = (e) => ({
   date:      new Date(e.creado_en).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' }),
   time:      new Date(e.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
 })
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -410,22 +411,30 @@ export default function LogbookView() {
   const [loading,    setLoading]     = useState(true)
   const [editingEntry, setEditingEntry] = useState(null)
   const [allStudents,  setAllStudents]  = useState([])
+  const [analisis,        setAnalisis]        = useState(null)
+  const [loadingAnalisis, setLoadingAnalisis] = useState(false)
+  const [entriesVersion, setEntriesVersion] = useState(0)
 
-  const handleEntrySaved = (newRaw) => {
+const handleEntrySaved = (newRaw) => {
     setEntries((prev) => [mapEntry(newRaw), ...prev])
+    setEntriesVersion((v) => v + 1)
   }
 
   const handleEntryUpdated = (updatedRaw) => {
     setEntries((prev) => prev.map((e) => e.id === updatedRaw.id ? mapEntry(updatedRaw) : e))
+    setEntriesVersion((v) => v + 1)
   }
 
   const handleEntryDeleted = (id) => {
     api.delete(`/logbook/${id}/`)
-      .then(() => setEntries((prev) => prev.filter((e) => e.id !== id)))
+      .then(() => {
+        setEntries((prev) => prev.filter((e) => e.id !== id))
+        setEntriesVersion((v) => v + 1)
+      })
       .catch(console.error)
   }
 
-  // Carga todos los estudiantes y si no hay ID seleccionado usa el primero
+  // Carga todos los estudiantes
   useEffect(() => {
     api.get('/students/')
       .then((res) => {
@@ -452,7 +461,7 @@ export default function LogbookView() {
         })
       })
       .catch(console.error)
-  }, [selectedId])
+  }, [selectedId])  // ← sin entriesVersion
 
   // Carga entradas de bitácora
   useEffect(() => {
@@ -464,15 +473,25 @@ export default function LogbookView() {
       .finally(() => setLoading(false))
   }, [selectedId])
 
+  // Carga análisis IA
+  useEffect(() => {
+    if (!selectedId) return
+    setLoadingAnalisis(true)
+    api.get(`/logbook/analysis/?student=${selectedId}`)
+      .then((res) => setAnalisis(res.data))
+      .catch(console.error)
+      .finally(() => setLoadingAnalisis(false))
+  }, [selectedId, entriesVersion])  // ← entriesVersion aquí
+
   const visibleEntries = showAll ? entries : entries.slice(0, 3)
 
-  if (loading && !student) return (
+  if (!student) return (
     <div className="flex items-center justify-center py-32">
       <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
     </div>
   )
 
-  if (!student && allStudents.length === 0) return (
+  if (allStudents.length === 0) return (
     <div className="flex flex-col items-center justify-center py-32">
       <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
         <Users size={24} strokeWidth={1.5} className="text-slate-400" />
@@ -481,7 +500,6 @@ export default function LogbookView() {
       <p className="text-xs text-slate-400">Agrega un estudiante primero desde la sección Mis Estudiantes.</p>
     </div>
   )
-
 
 
   return (
@@ -595,73 +613,86 @@ export default function LogbookView() {
               Análisis de patrones de IA
             </h2>
 
-            {/* Card análisis */}
-            <div
-              className="rounded-2xl p-5 mb-4 shadow-[0_2px_16px_rgba(99,102,241,0.1)]"
-              style={{ background: 'linear-gradient(135deg,#eef2ff,#f5f3ff)', border: '1.5px solid #c7d2fe' }}
-            >
-              {/* Cabecera del análisis */}
-              <div className="flex items-start gap-3 mb-5">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg">🧠</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="font-semibold text-slate-800"
-                    style={{ fontFamily: "'Poppins', sans-serif" }}
-                  >
-                    Análisis de Patrones · {student.name}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Basado en {entries.length} entradas · Últimas 3 semanas
-	  </p>
-                </div>
-                <span className="flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">
-                  87% confianza
-                </span>
-              </div>
-
-              {/* Gráfico por días */}
-              <div className="mb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <BarChart3 size={13} strokeWidth={2} className="text-indigo-400" />
-                  <p className="text-xs font-semibold text-slate-600">
-                    Nivel de atención por días (promedio)
-                  </p>
+	{/* Card análisis */}
+	<div
+	className="rounded-2xl p-5 mb-4 shadow-[0_2px_16px_rgba(99,102,241,0.1)]"
+	style={{ background: 'linear-gradient(135deg,#eef2ff,#f5f3ff)', border: '1.5px solid #c7d2fe' }}
+	>
+	{/* Cabecera */}
+	<div className="flex items-start gap-3 mb-5">
+	<div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+	<span className="text-lg">🧠</span>
 	</div>
-	<div className="space-y-2.5">
-	<p className="text-xs text-slate-400 text-center py-4">
-	El análisis de patrones estará disponible cuando se integre la IA.
-	</p>                </div>
-              </div>
+	<div className="flex-1 min-w-0">
+	<p className="font-semibold text-slate-800" style={{ fontFamily: "'Poppins', sans-serif" }}>
+	Análisis de Patrones · {student.name}
+	</p>
+	<p className="text-xs text-slate-400 mt-0.5">
+	Basado en {entries.length} entradas · Últimas 3 semanas
+	</p>
+	</div>
+	{analisis && !analisis.insuficiente && (
+	<span className="flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">
+	{analisis.cached ? 'Cached' : 'Nuevo'}
+	</span>
+	)}
+	</div>
 
-              {/* Patrón detectado */}
-              <div className="p-4 rounded-xl bg-white border border-slate-100 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <CalendarDays size={13} strokeWidth={2} className="text-indigo-500" />
-                  <p className="text-xs font-semibold text-slate-700">Patrón detectado</p>
-                </div>
-                <p className="text-sm text-slate-600 leading-relaxed mb-3">
-                  La <strong className="text-slate-800">inatención aumenta los días martes y jueves</strong>.
-                  Esto coincide con las sesiones de mayor carga teórica. Los viernes presenta el mejor
-                  desempeño, posiblemente por el formato de actividades más dinámicas.
-                </p>
+	{/* Contenido según estado */}
+	{loadingAnalisis ? (
+	<div className="flex flex-col items-center py-8 gap-3">
+	<div className="w-7 h-7 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+	<p className="text-xs text-slate-400">Generando análisis con IA...</p>
+	</div>
 
-                {/* Sugerencia IA */}
-                <div
-                  className="p-3 rounded-xl flex items-start gap-2.5"
-                  style={{ background: '#eef2ff', border: '1px solid #c7d2fe' }}
-                >
-                  <Lightbulb size={14} strokeWidth={2} className="text-indigo-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-indigo-700 leading-relaxed">
-                    <strong>Sugerencia IA:</strong> Implementar{' '}
-                    <em>pausas activas cada 20 min</em> los martes y jueves. Rotar el asiento de{' '}
-                    {student.name.split(' ')[0]} cerca del pizarrón esos días para aumentar el foco.
-                  </p>
-                </div>
-              </div>
-            </div>
+	) : !analisis || analisis.insuficiente ? (
+	<div className="flex flex-col items-center py-8 text-center">
+	<div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-3">
+	<Brain size={20} strokeWidth={1.5} className="text-indigo-300" />
+	</div>
+	<p className="text-sm font-semibold text-slate-600 mb-1">Datos insuficientes</p>
+	<p className="text-xs text-slate-400 leading-relaxed max-w-xs">
+	{analisis?.mensaje ?? 'Agrega al menos 3 entradas para generar un análisis.'}
+	</p>
+	</div>
 
+	) : (
+	<>
+	{/* Resumen */}
+	<div className="p-4 rounded-xl bg-white border border-slate-100 shadow-sm mb-3">
+	<div className="flex items-center gap-2 mb-2">
+	  <BarChart3 size={13} strokeWidth={2} className="text-indigo-400" />
+	  <p className="text-xs font-semibold text-slate-700">Resumen general</p>
+	</div>
+	<p className="text-sm text-slate-600 leading-relaxed">
+	  {analisis.resumen}
+	</p>
+	</div>
+
+	{/* Patrón detectado */}
+	<div className="p-4 rounded-xl bg-white border border-slate-100 shadow-sm mb-3">
+	<div className="flex items-center gap-2 mb-2">
+	  <CalendarDays size={13} strokeWidth={2} className="text-indigo-500" />
+	  <p className="text-xs font-semibold text-slate-700">Patrón detectado</p>
+	</div>
+	<p className="text-sm text-slate-600 leading-relaxed">
+	  {analisis.patron}
+	</p>
+	</div>
+
+	{/* Sugerencia */}
+	<div
+	className="p-3 rounded-xl flex items-start gap-2.5"
+	style={{ background: '#eef2ff', border: '1px solid #c7d2fe' }}
+	>
+	<Lightbulb size={14} strokeWidth={2} className="text-indigo-500 mt-0.5 flex-shrink-0" />
+	<p className="text-xs text-indigo-700 leading-relaxed">
+	  <strong>Sugerencia IA:</strong> {analisis.sugerencia}
+	</p>
+	</div>
+	</>
+	)}
+	</div>
             {/* Mini stats de la bitácora */}
             <div className="grid grid-cols-3 gap-3">
               {[
