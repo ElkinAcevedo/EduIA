@@ -80,14 +80,14 @@ EduIA busca solucionar esta problemática proporcionando un entorno centralizado
            ▼
 ┌─────────────────────┐
 │    Base de Datos    │
-│ PostgreSQL / SQLite │
+│     PostgreSQL      │
 └──────────┬──────────┘
            │
            ▼
 ┌─────────────────────┐
 │    Gemini AI API    │
-│ Inteligencia        │
-│ Artificial          │
+│    Inteligencia     │
+│     Artificia       │
 └─────────────────────┘
 ```
 
@@ -345,33 +345,6 @@ Se recomienda:
 - PostgreSQL
 
 ---
-
-# 🔐 Seguridad Recomendada
-
-Antes de desplegar en producción:
-
-- Desactivar DEBUG.
-- Utilizar HTTPS.
-- Configurar PostgreSQL.
-- Proteger las claves API.
-- Implementar autenticación JWT.
-- Configurar permisos de acceso por docente.
-
----
-
-# 📸 Capturas de Pantalla
-
-Agregar aquí capturas de:
-
-- Dashboard principal
-- Gestión de estudiantes
-- Bitácora
-- Análisis IA
-- Asistente virtual
-- Material adaptado
-
----
-
 # 🎯 Objetivo Académico
 
 Este proyecto fue desarrollado como una propuesta tecnológica para apoyar los procesos de enseñanza y seguimiento de estudiantes con TDAH mediante técnicas de Inteligencia Artificial, Procesamiento de Lenguaje Natural y análisis pedagógico automatizado.
@@ -386,14 +359,3 @@ Estudiantes de Ingeniería de Sistemas.
 
 ---
 
-# 📄 Licencia
-
-Este proyecto se distribuye bajo la licencia MIT.
-
-Consulta el archivo:
-
-```text
-LICENSE
-```
-
-para más información.
