@@ -680,7 +680,6 @@ useEffect(() => {
         </header>
 
         {/* ── ALERT SUMMARY ──────────────────────────────────────────────── */}
-        <AlertSummaryBar students={students} />
 
         {/* ── FILTROS POR TIPO ───────────────────────────────────────────── */}
         <div className="flex flex-wrap gap-2">
