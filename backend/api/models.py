@@ -138,24 +138,32 @@ class Estrategia(models.Model):
         ("impulsividad", "Impulsividad"),
         ("organizacion", "Organización"),
         ("evaluacion", "Evaluación"),
-        ("transicion", "Transición"),
+        ("transiciones", "Transiciones"),
     ]
 
     id = models.AutoField(primary_key=True)
     titulo = models.CharField(max_length=255)
-    categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES)
+    emoji = models.CharField(max_length=10, default="📌")
+    categorias = models.JSONField(default=list)  # ["atencion", "energia"] — múltiples
     descripcion = models.TextField()
-    pasos = models.JSONField(default=list)               # text[]
-    tasa_eficacia = models.IntegerField(default=0)
+    pasos_markdown = models.TextField(blank=True, default="")  # Markdown ingresado manualmente
+    tasa_eficacia = models.IntegerField(default=0)             # 0-100
+    etiqueta_eficacia = models.CharField(max_length=100, default="")  # "92% mejora en atención"
+    tiempo_setup = models.CharField(max_length=50, blank=True, default="")  # "5 min setup"
+    contexto = models.CharField(max_length=100, blank=True, default="")     # "Aula y casa"
     sugerida_por_ia = models.BooleanField(default=False)
+    activa = models.BooleanField(default=True)
 
     class Meta:
         db_table = "estrategia"
         verbose_name = "Estrategia"
         verbose_name_plural = "Estrategias"
+        ordering = ["-tasa_eficacia"]
 
     def __str__(self):
         return self.titulo
+
+
 
 class AnalisisBitacora(models.Model):
     estudiante  = models.OneToOneField(
