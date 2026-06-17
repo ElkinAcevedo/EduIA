@@ -28,9 +28,7 @@ const CATEGORIA_META = {
 const FALLBACK_META = { icon: PenLine, iconBg: 'bg-slate-100', iconColor: 'text-slate-500' }
 
 function statusDot(status) {
-  return status === 'success' ? 'bg-emerald-400'
-       : status === 'warning' ? 'bg-amber-400'
-       : 'bg-red-400'
+  return status === 'success' ? 'bg-emerald-400' : 'bg-red-400'
 }
 
 function AlertWarning({ alert, onDismiss, onNavigate }) {

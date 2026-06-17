@@ -13,7 +13,7 @@ const mapStudent = (s) => ({
   strengths:     s.fortalezas ?? [],
   attention:     s.atencion_promedio ?? 0,
   participation: s.puntaje_participacion ?? 0,
-  alerts:        s.alertas ?? 0,                  // cuando el backend lo tenga
+  alerts:        (s.atencion_promedio ?? 0) < 60 ? 1 : 0,  // alerta si atención < 60%
   // Generados en frontend porque el backend no los devuelve aún
   initials:      s.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
   avatarGradient: 'from-indigo-400 to-violet-500',

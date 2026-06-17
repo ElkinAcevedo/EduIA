@@ -74,16 +74,11 @@ def dashboard_resumen(request):
         'estudiantes_hoy': entradas_hoy,
     }
 
-    # Estudiantes activos — ordenados por atencion_promedio asc (los más bajos primero)
+# Estudiantes activos — ordenados por atencion_promedio asc (los más bajos primero)
     activos = []
     for e in estudiantes.order_by('atencion_promedio'):
         atencion = e.atencion_promedio or 0
-        if atencion >= 70:
-            status = 'success'
-        elif atencion >= 50:
-            status = 'warning'
-        else:
-            status = 'danger'
+        status = 'success' if atencion >= 60 else 'danger'
 
         initials = ''.join(w[0] for w in e.nombre.split())[:2].upper()
         activos.append({
@@ -94,9 +89,9 @@ def dashboard_resumen(request):
             'status': status,
         })
 
-    # Alertas IA — estudiantes con atencion < 50
+    # Alertas IA — estudiantes con atencion < 60
     alertas = []
-    for e in estudiantes.filter(atencion_promedio__lt=50):
+    for e in estudiantes.filter(atencion_promedio__lt=60):
         alertas.append({
             'id': e.id,
             'type': 'warning',
