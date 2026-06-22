@@ -102,6 +102,13 @@ class MaterialAdaptado(models.Model):
     ]
 
     id = models.AutoField(primary_key=True)
+    profesor = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name="materiales",
+        db_column="profesor_id",
+        null=True,  # null=True solo para no romper migración con filas viejas; nuevas filas siempre lo tendrán
+    )
     estudiante = models.ForeignKey(
         Estudiante,
         on_delete=models.SET_NULL,

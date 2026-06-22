@@ -179,13 +179,13 @@ def generar_material_view(request):
         return Response({'error': f'No se pudo generar el material: {str(e)}'}, status=500)
 
     material = MaterialAdaptado.objects.create(
+        profesor=request.user,
         estudiante=estudiante,
         tema=tema,
         tipo_material=tipo_material,
         dificultad=dificultad,
         contenido_markdown=json.dumps(contenido, ensure_ascii=False),
     )
-
     return Response({
         'id': material.id,
         'tema': material.tema,
@@ -201,12 +201,11 @@ class MaterialAdaptadoListView(generics.ListAPIView):
     serializer_class = MaterialAdaptadoSerializer
     def get_queryset(self):
         return MaterialAdaptado.objects.filter(
-            estudiante__profesor=self.request.user
+            profesor=self.request.user
         ).order_by('-creado_en')
-
 @api_view(['GET'])
 def material_pdf(request, pk):
-    material = get_object_or_404(MaterialAdaptado, pk=pk, estudiante__profesor=request.user)
+    material = get_object_or_404(MaterialAdaptado, pk=pk, profesor=request.user)  
     contenido = json.loads(material.contenido_markdown)
 
     material_dict = {

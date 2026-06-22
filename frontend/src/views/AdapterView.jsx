@@ -118,7 +118,7 @@ export default function AdapterView() {
   const [material,      setMaterial]      = useState(null)
   const [error,         setError]         = useState(null)
   const [copied,        setCopied]        = useState(false)
-
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
   useEffect(() => {
     api.get('/students/')
       .then(({ data }) => setEstudiantes(data))
@@ -165,6 +165,26 @@ export default function AdapterView() {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+function handleDownloadPdf() {
+  if (!material) return
+  setDownloadingPdf(true)
+
+  api.get(`/adapter/${material.id}/pdf/`, { responseType: 'blob' })
+    .then(({ data }) => {
+      const url = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `material_${material.tema.replace(/\s+/g, '_').slice(0, 30)}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    })
+    .catch(() => setError('No se pudo descargar el PDF.'))
+    .finally(() => setDownloadingPdf(false))
+}
+
+
 
   function toggleOption(id) {
     setOptions((prev) => ({ ...prev, [id]: !prev[id] }))
@@ -326,11 +346,12 @@ export default function AdapterView() {
               {material && (
                 <div className="flex gap-2 flex-wrap">
                                                      <button
-  onClick={() => window.open(`http://localhost:8000/api/adapter/${material.id}/pdf/`, '_blank')}
-  className="text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+  onClick={handleDownloadPdf}
+  disabled={downloadingPdf}
+  className="text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
 >
-  <Download size={11} strokeWidth={2} /> PDF
-</button>         
+  <Download size={11} strokeWidth={2} /> {downloadingPdf ? 'Generando...' : 'PDF'}
+</button>		      
 		      </div>
               )}
             </div>
