@@ -141,17 +141,16 @@ function AddStudentModal({ onClose, onStudentAdded }) {
     setSaving(true)
     setError(null)
     const payload = {
-	nombre:                form.nombre.trim(),
-	edad:                  parseInt(form.edad),
-	grado:                 form.grado.trim(),
-	tipo_tdah:             form.tipo_tdah,
-	atencion_promedio:     form.atencion_promedio     !== '' ? parseInt(form.atencion_promedio)     : 0,
-	puntaje_participacion: form.puntaje_participacion !== '' ? parseInt(form.puntaje_participacion) : 0,
-	fortalezas:            form.fortalezas
-	? form.fortalezas.split(',').map((f) => f.trim()).filter(Boolean)
-	: [],
-	profesor: 1,
-	}
+      nombre:                form.nombre.trim(),
+      edad:                  parseInt(form.edad),
+      grado:                 form.grado.trim(),
+      tipo_tdah:             form.tipo_tdah,
+      atencion_promedio:     form.atencion_promedio     !== '' ? parseInt(form.atencion_promedio)     : 0,
+      puntaje_participacion: form.puntaje_participacion !== '' ? parseInt(form.puntaje_participacion) : 0,
+      fortalezas:            form.fortalezas
+        ? form.fortalezas.split(',').map((f) => f.trim()).filter(Boolean)
+        : [],
+    }
 
     api.post('/students/', payload)
       .then((res) => {
@@ -359,18 +358,18 @@ function EditStudentModal({ student, onClose, onStudentUpdated }) {
     setSaving(true)
     setError(null)
 
-    const payload = {
-      nombre:                form.nombre.trim(),
-      edad:                  parseInt(form.edad),
-      grado:                 form.grado.trim(),
-      tipo_tdah:             form.tipo_tdah,
-      atencion_promedio:     form.atencion_promedio     !== '' ? parseInt(form.atencion_promedio)     : 0,
-      puntaje_participacion: form.puntaje_participacion !== '' ? parseInt(form.puntaje_participacion) : 0,
-      fortalezas:            form.fortalezas
-        ? form.fortalezas.split(',').map((f) => f.trim()).filter(Boolean)
-        : [],
-      profesor: 1,
-    }
+const payload = {
+	nombre:                form.nombre.trim(),
+	edad:                  parseInt(form.edad),
+	grado:                 form.grado.trim(),
+	tipo_tdah:             form.tipo_tdah,
+	atencion_promedio:     form.atencion_promedio     !== '' ? parseInt(form.atencion_promedio)     : 0,
+	puntaje_participacion: form.puntaje_participacion !== '' ? parseInt(form.puntaje_participacion) : 0,
+	fortalezas:            form.fortalezas
+	? form.fortalezas.split(',').map((f) => f.trim()).filter(Boolean)
+	: [],
+	}
+
 
     api.patch(`/students/${student.id}/`, payload)
       .then((res) => {

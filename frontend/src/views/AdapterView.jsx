@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import api from '../api'
 import {
   Sliders,
   FileCheck,
@@ -13,6 +14,7 @@ import {
   Lightbulb,
   ChevronDown,
   Check,
+  AlertCircle,
 } from 'lucide-react'
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -24,36 +26,28 @@ const MATERIAL_TYPES = [
   '🎮 Juego de repaso',
 ]
 
-const PROFILES = [
-  'TDAH Combinado (Mateo Gómez)',
-  'TDAH Inatento (Sofía Vargas)',
-  'TDAH Hiperactivo (Luca Pérez)',
-  'TDAH Combinado (Ale Torres)',
-  'General para el grupo',
-]
-
 const DIFFICULTIES = [
-  { id: 'basico',     label: 'Básico'      },
-  { id: 'intermedio', label: 'Intermedio'  },
-  { id: 'avanzado',  label: 'Avanzado'    },
+  { id: 'Basico',     label: 'Básico'      },
+  { id: 'Intermedio', label: 'Intermedio'  },
+  { id: 'Avanzado',   label: 'Avanzado'    },
 ]
 
 const EXTRA_OPTIONS = [
-  { id: 'emojis',   label: 'Incluir emojis de apoyo visual',   defaultVal: true  },
-  { id: 'steps',    label: 'Segmentar en pasos numerados',      defaultVal: true  },
-  { id: 'selfeval', label: 'Añadir sección de autoevaluación', defaultVal: false },
+  { id: 'emojis',   label: 'Incluir emojis de apoyo visual'   },
+  { id: 'steps',    label: 'Segmentar en pasos numerados'      },
+  { id: 'selfeval', label: 'Añadir sección de autoevaluación' },
 ]
 
-const KEYWORDS = [
-  { emoji: '🔢', word: 'Fracción',      color: 'bg-violet-100 text-violet-700 border-violet-200'   },
-  { emoji: '⬆️', word: 'Numerador',     color: 'bg-sky-100 text-sky-700 border-sky-200'            },
-  { emoji: '⬇️', word: 'Denominador',   color: 'bg-emerald-100 text-emerald-700 border-emerald-200'},
-  { emoji: '🍕', word: 'Parte del todo',color: 'bg-rose-100 text-rose-700 border-rose-200'         },
-  { emoji: '✂️', word: 'Dividir',       color: 'bg-amber-100 text-amber-700 border-amber-200'      },
+// Colores rotativos para los pasos (igual que el mockup original)
+const STEP_STYLES = [
+  { bg: 'bg-indigo-50',  border: 'border-indigo-200',  circle: 'bg-indigo-600',  circleShadow: 'shadow-indigo-300',  text: 'text-indigo-800',  accent: 'text-indigo-600'  },
+  { bg: 'bg-emerald-50', border: 'border-emerald-200', circle: 'bg-emerald-500', circleShadow: 'shadow-emerald-200', text: 'text-emerald-800', accent: 'text-emerald-600' },
+  { bg: '',              border: '',                   circle: '',               circleShadow: '',                  text: 'text-violet-800',  accent: 'text-violet-600',
+    customBg: '#fdf4ff', customBorder: '#e9d5ff', customCircle: '#7c3aed' },
+  { bg: 'bg-sky-50',     border: 'border-sky-200',     circle: 'bg-sky-500',     circleShadow: 'shadow-sky-200',     text: 'text-sky-800',     accent: 'text-sky-600'     },
 ]
 
-// ── Reusable styled select ────────────────────────────────────────────────────
-function StyledSelect({ value, onChange, options }) {
+function StyledSelect({ value, onChange, options, getLabel }) {
   return (
     <div className="relative">
       <select
@@ -62,7 +56,9 @@ function StyledSelect({ value, onChange, options }) {
         className="w-full appearance-none px-4 py-2.5 pr-9 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:bg-white transition-all"
       >
         {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
+          <option key={opt.id ?? opt} value={opt.id ?? opt}>
+            {getLabel ? getLabel(opt) : opt}
+          </option>
         ))}
       </select>
       <ChevronDown
@@ -74,29 +70,98 @@ function StyledSelect({ value, onChange, options }) {
   )
 }
 
-// ── Main view ─────────────────────────────────────────────────────────────────
-export default function AdapterView() {
-  const [topic,        setTopic]        = useState('Las fracciones y sus partes')
-  const [materialType, setMaterialType] = useState(MATERIAL_TYPES[1])   // Actividad práctica
-  const [profile,      setProfile]      = useState(PROFILES[0])
-  const [difficulty,   setDifficulty]   = useState('intermedio')
-  const [options,      setOptions]      = useState({ emojis: true, steps: true, selfeval: false })
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [generated,    setGenerated]    = useState(true)   // preview shown on load
-  const [copied,       setCopied]       = useState(false)
+function StepBlock({ paso, index }) {
+  const style = STEP_STYLES[index % STEP_STYLES.length]
+  const isCustom = !!style.customBg
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
+  return (
+    <div
+      className={`flex items-start gap-3 p-4 rounded-2xl border ${!isCustom ? `${style.bg} ${style.border}` : ''}`}
+      style={isCustom ? { background: style.customBg, borderColor: style.customBorder } : undefined}
+    >
+      <div
+        className={`w-7 h-7 rounded-full text-white flex items-center justify-center font-extrabold text-xs flex-shrink-0 ${!isCustom ? `${style.circle} shadow-sm ${style.circleShadow}` : ''}`}
+        style={isCustom ? { background: style.customCircle, boxShadow: '0 2px 8px rgba(124,58,237,0.3)' } : undefined}
+      >
+        {index + 1}
+      </div>
+      <div className="text-sm flex-1">
+        <strong className={style.text}>
+          {paso.emoji} {paso.titulo}
+        </strong>
+        <br />
+        <span className="text-slate-600">{paso.contenido}</span>
+
+        {paso.ejercicio_grid && paso.ejercicio_grid.length > 0 && (
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {paso.ejercicio_grid.map((item, i) => (
+              <div key={i} className="p-2.5 rounded-xl bg-white border border-violet-200 text-center">
+                <p className="text-xs text-slate-500 mb-0.5">{item.label}</p>
+                <p className="font-mono text-lg font-bold text-violet-500">{item.valor}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function AdapterView() {
+  const [estudiantes,   setEstudiantes]   = useState([])
+  const [topic,         setTopic]         = useState('')
+  const [materialType,  setMaterialType]  = useState(MATERIAL_TYPES[1])
+  const [profileId,     setProfileId]     = useState('general')
+  const [difficulty,    setDifficulty]    = useState('Intermedio')
+  const [options,       setOptions]       = useState({ emojis: true, steps: true, selfeval: false })
+  const [isGenerating,  setIsGenerating]  = useState(false)
+  const [material,      setMaterial]      = useState(null)
+  const [error,         setError]         = useState(null)
+  const [copied,        setCopied]        = useState(false)
+
+  useEffect(() => {
+    api.get('/students/')
+      .then(({ data }) => setEstudiantes(data))
+      .catch(console.error)
+  }, [])
+
+  const estudianteSeleccionado = estudiantes.find(e => String(e.id) === profileId)
+
   function handleGenerate() {
-    if (isGenerating) return
+    if (isGenerating || !topic.trim()) {
+      if (!topic.trim()) setError('Escribe un tema curricular antes de generar.')
+      return
+    }
     setIsGenerating(true)
-    setGenerated(false)
-    setTimeout(() => {
-      setIsGenerating(false)
-      setGenerated(true)
-    }, 1900)
+    setError(null)
+
+    api.post('/adapter/generate/', {
+      tema: topic.trim(),
+      tipo_material: materialType,
+      dificultad: difficulty,
+      estudiante_id: profileId === 'general' ? null : profileId,
+      opciones: options,
+    })
+      .then(({ data }) => setMaterial(data))
+      .catch(() => setError('No se pudo generar el material. Intenta de nuevo.'))
+      .finally(() => setIsGenerating(false))
   }
 
   function handleCopy() {
+    if (!material) return
+    const c = material.contenido
+    const texto = [
+      `${c.titulo_emoji} ${c.titulo_linea1} ${c.titulo_linea2 || ''}`,
+      '',
+      c.intro_texto,
+      '',
+      'Palabras clave: ' + c.palabras_clave.map(k => k.palabra).join(', '),
+      '',
+      ...c.pasos.map((p, i) => `${i + 1}. ${p.titulo}: ${p.contenido}`),
+      '',
+      c.cierre_texto,
+    ].join('\n')
+    navigator.clipboard.writeText(texto)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -105,16 +170,12 @@ export default function AdapterView() {
     setOptions((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const c = material?.contenido
+
   return (
     <div>
-
-      {/* ── Page header ── */}
       <div className="mb-6">
-        <h1
-          className="text-2xl font-bold text-slate-800"
-          style={{ fontFamily: "'Poppins', sans-serif" }}
-        >
+        <h1 className="text-2xl font-bold text-slate-800" style={{ fontFamily: "'Poppins', sans-serif" }}>
           Generador de Material con IA
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
@@ -122,16 +183,12 @@ export default function AdapterView() {
         </p>
       </div>
 
-      {/* ── Main grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
 
-        {/* ════════════════ LEFT — Config (2/5) ════════════════ */}
+        {/* ════════════════ LEFT — Config ════════════════ */}
         <div className="lg:col-span-2 flex flex-col gap-4">
-
-          {/* Config card */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_16px_rgba(15,23,42,0.06)] p-6 flex flex-col gap-5">
 
-            {/* Card header */}
             <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-200 flex-shrink-0">
                 <Sliders size={15} strokeWidth={2} className="text-white" />
@@ -142,11 +199,15 @@ export default function AdapterView() {
               </div>
             </div>
 
-            {/* Tema curricular */}
+            {error && (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
+                <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
+                <p className="text-xs text-red-600 font-medium">{error}</p>
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                📖 Tema curricular
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">📖 Tema curricular</label>
               <input
                 type="text"
                 value={topic}
@@ -156,35 +217,26 @@ export default function AdapterView() {
               />
             </div>
 
-            {/* Tipo de material */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                📄 Tipo de material
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">📄 Tipo de material</label>
+              <StyledSelect value={materialType} onChange={setMaterialType} options={MATERIAL_TYPES} />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">🧠 Adaptar al perfil</label>
               <StyledSelect
-                value={materialType}
-                onChange={setMaterialType}
-                options={MATERIAL_TYPES}
+                value={profileId}
+                onChange={setProfileId}
+                options={[
+                  { id: 'general', nombre: 'General para el grupo' },
+                  ...estudiantes.map(e => ({ id: String(e.id), nombre: `TDAH ${e.tipo_tdah} (${e.nombre})` })),
+                ]}
+                getLabel={(opt) => opt.nombre}
               />
             </div>
 
-            {/* Perfil TDAH */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                🧠 Adaptar al perfil
-              </label>
-              <StyledSelect
-                value={profile}
-                onChange={setProfile}
-                options={PROFILES}
-              />
-            </div>
-
-            {/* Nivel de dificultad */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-2">
-                ⚡ Nivel de dificultad
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-2">⚡ Nivel de dificultad</label>
               <div className="flex gap-2">
                 {DIFFICULTIES.map(({ id, label }) => {
                   const isActive = difficulty === id
@@ -206,17 +258,11 @@ export default function AdapterView() {
               </div>
             </div>
 
-            {/* Opciones extra */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-2">
-                🎨 Opciones extra
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-2">🎨 Opciones extra</label>
               <div className="space-y-2">
                 {EXTRA_OPTIONS.map(({ id, label }) => (
-                  <label
-                    key={id}
-                    className="flex items-center gap-2.5 cursor-pointer select-none"
-                  >
+                  <label key={id} className="flex items-center gap-2.5 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={options[id]}
@@ -229,7 +275,6 @@ export default function AdapterView() {
               </div>
             </div>
 
-            {/* Generate button */}
             <button
               onClick={handleGenerate}
               disabled={isGenerating}
@@ -244,21 +289,9 @@ export default function AdapterView() {
             >
               {isGenerating ? (
                 <>
-                  <svg
-                    className="animate-spin w-4 h-4 flex-shrink-0"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12" cy="12" r="10"
-                      stroke="currentColor" strokeWidth="3"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                    />
+                  <svg className="animate-spin w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                   </svg>
                   Generando…
                 </>
@@ -270,30 +303,12 @@ export default function AdapterView() {
               )}
             </button>
           </div>
-
-          {/* IA tip card */}
-          <div
-            className="rounded-2xl p-4 border border-emerald-200"
-            style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)' }}
-          >
-            <div className="flex items-center gap-1.5 mb-2">
-              <Lightbulb size={13} strokeWidth={2} className="text-emerald-500" />
-              <p className="text-xs font-semibold text-emerald-700">Tip de IA</p>
-            </div>
-            <p className="text-xs text-emerald-700 leading-relaxed">
-              Para TDAH Combinado, los materiales con{' '}
-              <strong>3 pasos visuales claros</strong> y un emoji al inicio de
-              cada sección aumentan la comprensión lectora hasta un{' '}
-              <strong>40%</strong>.
-            </p>
-          </div>
         </div>
 
-        {/* ════════════════ RIGHT — Print preview (3/5) ════════════════ */}
+        {/* ════════════════ RIGHT — Preview ════════════════ */}
         <div className="lg:col-span-3">
           <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_16px_rgba(15,23,42,0.06)] flex flex-col overflow-hidden">
 
-            {/* Preview toolbar */}
             <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
               <div>
                 <p className="font-semibold text-slate-800 text-sm flex items-center gap-2">
@@ -301,217 +316,144 @@ export default function AdapterView() {
                   Vista previa del material
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                  Generado · Optimizado para TDAH Combinado
+                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${material ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+                  {material
+                    ? `Generado · Optimizado para ${estudianteSeleccionado ? `TDAH ${estudianteSeleccionado.tipo_tdah}` : 'el grupo'}`
+                    : 'Sin generar aún'}
                 </p>
               </div>
 
-              <div className="flex gap-2 flex-wrap">
-                {/* Copy button */}
-                <button
-                  onClick={handleCopy}
-                  className={[
-                    'text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1.5',
-                    copied
-                      ? 'text-emerald-600 bg-emerald-50 border border-emerald-200'
-                      : 'text-slate-600 bg-slate-100 hover:bg-slate-200',
-                  ].join(' ')}
-                >
-                  {copied
-                    ? <><Check size={11} strokeWidth={2.5} /> Copiado</>
-                    : <><Copy size={11} strokeWidth={2} /> Copiar</>}
-                </button>
-
-                <button className="text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
-                  <Printer size={11} strokeWidth={2} /> Imprimir
-                </button>
-
-                <button className="text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
-                  <Download size={11} strokeWidth={2} /> PDF
-                </button>
-              </div>
+              {material && (
+                <div className="flex gap-2 flex-wrap">
+                                                     <button
+  onClick={() => window.open(`http://localhost:8000/api/adapter/${material.id}/pdf/`, '_blank')}
+  className="text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+>
+  <Download size={11} strokeWidth={2} /> PDF
+</button>         
+		      </div>
+              )}
             </div>
 
-            {/* ── Material output ── */}
-            <div
-              className="flex-1 overflow-y-auto p-7 space-y-5 text-slate-700"
-              style={{ maxHeight: 'calc(100vh - 240px)' }}
-            >
+            <div className="flex-1 overflow-y-auto p-7 space-y-5 text-slate-700" style={{ maxHeight: 'calc(100vh - 240px)' }}>
 
-              {/* Title block */}
-              <div className="text-center pb-5 border-b-2 border-dashed border-slate-200">
-                <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 px-4 py-1.5 rounded-full text-xs font-semibold text-indigo-600 mb-3">
-                  <Star size={10} strokeWidth={2.5} />
-                  Para: Mateo Gómez · 3er Grado · TDAH Combinado
+              {!material && !isGenerating && (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+                  <Wand2 size={32} strokeWidth={1.2} />
+                  <p className="text-sm">Configura el material y presiona "Generar Material"</p>
                 </div>
-                <h2
-                  className="text-2xl font-extrabold text-slate-800 leading-tight"
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  🍕 Las Fracciones<br />
-                  <span className="text-indigo-600">y Sus Partes</span>
-                </h2>
-                <p className="text-slate-500 text-sm mt-2">
-                  Actividad práctica · Nivel Intermedio · ~15 min
-                </p>
-              </div>
+              )}
 
-              {/* Intro */}
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200">
-                <p className="text-sm leading-relaxed">
-                  🎯{' '}
-                  <strong className="text-amber-800">¿Qué vamos a hacer hoy?</strong>
-                  <br />
-                  Aprenderemos qué es una fracción usando cosas que ya conoces:{' '}
-                  <strong className="text-amber-700">
-                    pizzas, barras de chocolate y figuras de colores.
-                  </strong>{' '}
-                  ¡Es más fácil de lo que parece!
-                </p>
-              </div>
-
-              {/* Keywords */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-2.5">
-                  <Key size={11} strokeWidth={2} className="text-indigo-400" />
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Palabras clave de hoy
-                  </p>
+              {isGenerating && (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+                  <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+                  <p className="text-sm">Generando material con IA…</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {KEYWORDS.map(({ emoji, word, color }) => (
-                    <span
-                      key={word}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${color}`}
-                    >
-                      {emoji} {word}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              )}
 
-              {/* Steps */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-3">
-                  <ListOrdered size={11} strokeWidth={2} className="text-indigo-400" />
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Pasos a seguir
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  {/* Step 1 */}
-                  <div className="flex items-start gap-3 p-4 rounded-2xl bg-indigo-50 border border-indigo-200">
-                    <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-extrabold text-xs flex-shrink-0 shadow-sm shadow-indigo-300">
-                      1
+              {material && c && (
+                <>
+                  {/* Title block */}
+                  <div className="text-center pb-5 border-b-2 border-dashed border-slate-200">
+                    <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 px-4 py-1.5 rounded-full text-xs font-semibold text-indigo-600 mb-3">
+                      <Star size={10} strokeWidth={2.5} />
+                      {estudianteSeleccionado
+                        ? `Para: ${estudianteSeleccionado.nombre} · ${estudianteSeleccionado.grado} · TDAH ${estudianteSeleccionado.tipo_tdah}`
+                        : 'Material general para el grupo'}
                     </div>
-                    <div className="text-sm">
-                      <strong className="text-indigo-800">
-                        Lee el ejemplo con atención 👀
-                      </strong>
-                      <br />
-                      <span className="text-slate-600">
-                        Una pizza tiene <strong>8 pedazos</strong>. Si te comes 3, tomaste{' '}
-                        <strong className="text-indigo-600">3/8</strong> de la pizza. El número
-                        de abajo (8) es el total. El de arriba (3) es tu parte.
-                      </span>
-                    </div>
+                    <h2 className="text-2xl font-extrabold text-slate-800 leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      {c.titulo_emoji} {c.titulo_linea1}
+                      {c.titulo_linea2 && <><br /><span className="text-indigo-600">{c.titulo_linea2}</span></>}
+                    </h2>
+                    <p className="text-slate-500 text-sm mt-2">
+                      {material.tipo_material} · Nivel {material.dificultad} · {c.duracion_estimada}
+                    </p>
                   </div>
 
-                  {/* Step 2 */}
-                  <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
-                    <div className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-extrabold text-xs flex-shrink-0 shadow-sm shadow-emerald-200">
-                      2
-                    </div>
-                    <div className="text-sm">
-                      <strong className="text-emerald-800">
-                        Dibuja tu propia fracción ✏️
-                      </strong>
+                  {/* Intro */}
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200">
+                    <p className="text-sm leading-relaxed">
+                      {c.intro_emoji}{' '}
+                      <strong className="text-amber-800">{c.intro_titulo}</strong>
                       <br />
-                      <span className="text-slate-600">
-                        En el espacio de abajo, dibuja una barra de chocolate de{' '}
-                        <strong>4 partes</strong>. Colorea <strong>2 partes</strong>.
-                        ¿Qué fracción coloreaste? Escríbela: ___/___
-                      </span>
-                    </div>
+                      <span className="text-slate-700">{c.intro_texto}</span>
+                    </p>
                   </div>
 
-                  {/* Step 3 */}
-                  <div
-                    className="flex items-start gap-3 p-4 rounded-2xl border"
-                    style={{ background: '#fdf4ff', borderColor: '#e9d5ff' }}
-                  >
-                    <div
-                      className="w-7 h-7 rounded-full text-white flex items-center justify-center font-extrabold text-xs flex-shrink-0"
-                      style={{ background: '#7c3aed', boxShadow: '0 2px 8px rgba(124,58,237,0.3)' }}
-                    >
-                      3
+                  {/* Keywords */}
+                  {c.palabras_clave?.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <Key size={11} strokeWidth={2} className="text-indigo-400" />
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Palabras clave de hoy</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {c.palabras_clave.map((k, i) => (
+                          <span key={i} className="px-3 py-1.5 rounded-xl text-xs font-bold border bg-violet-100 text-violet-700 border-violet-200">
+                            {k.emoji} {k.palabra}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-sm flex-1">
-                      <strong className="text-violet-800">
-                        ¡Ahora tú! Resuelve estos 3 ejercicios 🚀
-                      </strong>
-                      <br />
-                      <span className="text-slate-600">
-                        Escribe la fracción que representa la parte sombreada en cada figura.
-                      </span>
-                      <div className="mt-2 grid grid-cols-3 gap-2">
-                        {[
-                          { label: 'Figura A', val: '___/4' },
-                          { label: 'Figura B', val: '2/___' },
-                          { label: 'Figura C', val: '___/___' },
-                        ].map(({ label, val }) => (
-                          <div
-                            key={label}
-                            className="p-2.5 rounded-xl bg-white border border-violet-200 text-center"
-                          >
-                            <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-                            <p className="font-mono text-lg font-bold text-violet-500">{val}</p>
+                  )}
+
+                  {/* Steps */}
+                  {c.pasos?.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <ListOrdered size={11} strokeWidth={2} className="text-indigo-400" />
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pasos a seguir</p>
+                      </div>
+                      <div className="space-y-3">
+                        {c.pasos.map((paso, i) => <StepBlock key={i} paso={paso} index={i} />)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Autoevaluación */}
+                  {c.autoevaluacion?.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <FileCheck size={11} strokeWidth={2} className="text-indigo-400" />
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Autoevaluación</p>
+                      </div>
+                      <div className="space-y-3">
+                        {c.autoevaluacion.map((q, i) => (
+                          <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                            <p className="text-sm font-semibold text-slate-700 mb-2">{i + 1}. {q.pregunta}</p>
+                            <div className="space-y-1.5">
+                              {q.opciones?.map((opt, j) => (
+                                <label key={j} className="flex items-center gap-2 text-sm text-slate-600">
+                                  <input type="radio" name={`q-${i}`} className="accent-indigo-600" />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
+                  )}
+
+                  {/* Cierre */}
+                  <div className="p-4 rounded-2xl flex items-start gap-3 border" style={{ background: 'linear-gradient(135deg,#fef3c7,rgba(253,230,138,0.12))', borderColor: '#fde68a' }}>
+                    <span className="text-2xl flex-shrink-0">{c.cierre_emoji}</span>
+                    <div>
+                      <p className="font-semibold text-amber-800 text-sm mb-1">{c.cierre_titulo}</p>
+                      <p className="text-sm text-amber-700">{c.cierre_texto}</p>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Recuerda block */}
-              <div
-                className="p-4 rounded-2xl flex items-start gap-3 border"
-                style={{
-                  background: 'linear-gradient(135deg,#fef3c7,rgba(253,230,138,0.12))',
-                  borderColor: '#fde68a',
-                }}
-              >
-                <span className="text-2xl flex-shrink-0">⭐</span>
-                <div>
-                  <p className="font-semibold text-amber-800 text-sm mb-1">
-                    ¡Recuerda siempre!
-                  </p>
-                  <p className="text-sm text-amber-700">
-                    La fracción tiene <strong>dos partes</strong>: el número de{' '}
-                    <strong>ARRIBA</strong> (lo que tienes) y el número de{' '}
-                    <strong>ABAJO</strong> (el total). ¡Nunca se olvida si piensas en pizza! 🍕
-                  </p>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-4 border-t border-dashed border-slate-200">
-                <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                  <Brain size={11} strokeWidth={1.8} className="text-indigo-300" />
-                  Generado por EduIA TDAH ·{' '}
-                  {new Date().toLocaleDateString('es-CO', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  Prof. Carlos Ruiz · 3ro B
-                </span>
-              </div>
-
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-4 border-t border-dashed border-slate-200">
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                      <Brain size={11} strokeWidth={1.8} className="text-indigo-300" />
+                      Generado por EduIA TDAH ·{' '}
+                      {new Date(material.creado_en).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

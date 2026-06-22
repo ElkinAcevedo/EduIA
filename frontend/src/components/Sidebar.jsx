@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Brain,
   LayoutDashboard,
@@ -15,6 +15,7 @@ import {
   LogOut,
   Settings,
 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 // ── Nav sections & items ──────────────────────────────────────────────────────
 const NAV_SECTIONS = [
@@ -55,7 +56,6 @@ function NavItem({ to, icon: Icon, label, onClick }) {
           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800',
       ].join(' ')}
     >
-      {/* Icon wrapper */}
       <span
         className={[
           'flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 flex-shrink-0',
@@ -78,6 +78,26 @@ function NavItem({ to, icon: Icon, label, onClick }) {
 
 // ── Sidebar inner content (shared between desktop & drawer) ───────────────────
 function SidebarContent({ onNavClick }) {
+  const { usuario, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const nombre = usuario?.nombre || 'Docente'
+  const grado = usuario?.grado_asignado || ''
+  const colegio = usuario?.colegio || ''
+  const subtitulo = [grado, colegio].filter(Boolean).join(' · ') || 'Docente'
+
+  const iniciales = nombre
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+  function handleLogout() {
+    logout()
+    navigate('/login')
+  }
+
   return (
     <div className="flex flex-col h-full">
 
@@ -119,31 +139,26 @@ function SidebarContent({ onNavClick }) {
 
       {/* Footer — teacher profile */}
       <div className="px-3 py-4 border-t border-slate-100">
-        {/* Settings shortcut */}
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all duration-200 mb-1 group">
-          <span className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
-            <Settings size={14} strokeWidth={1.8} />
-          </span>
-          <span className="text-sm font-medium">Configuración</span>
-        </button>
-
-        {/* Profile card */}
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-all duration-200 group">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-all duration-200 group"
+          title="Cerrar sesión"
+        >
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
-            CR
+            {iniciales}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 text-left">
             <p className="text-sm font-semibold text-slate-700 truncate leading-tight">
-              Prof. Carlos Ruiz
+              {nombre}
             </p>
-            <p className="text-xs text-slate-400 truncate">Docente · 3ro B</p>
+            <p className="text-xs text-slate-400 truncate">{subtitulo}</p>
           </div>
           <LogOut
             size={13}
-            className="text-slate-300 group-hover:text-slate-500 transition-colors flex-shrink-0"
+            className="text-slate-300 group-hover:text-red-500 transition-colors flex-shrink-0"
             strokeWidth={1.8}
           />
-        </div>
+        </button>
       </div>
 
     </div>
@@ -159,12 +174,10 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* ── Desktop sidebar (fixed, always visible ≥ lg) ── */}
       <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-100 shadow-[4px_0_24px_rgba(99,102,241,0.05)] z-40">
         <SidebarContent onNavClick={undefined} />
       </aside>
 
-      {/* ── Mobile: hamburger trigger ── */}
       <button
         onClick={toggleDrawer}
         aria-label="Abrir menú"
@@ -173,7 +186,6 @@ export default function Sidebar() {
         {drawerOpen ? <X size={18} strokeWidth={2} /> : <Menu size={18} strokeWidth={2} />}
       </button>
 
-      {/* ── Mobile: backdrop ── */}
       <div
         onClick={closeDrawer}
         className={[
@@ -183,7 +195,6 @@ export default function Sidebar() {
         aria-hidden="true"
       />
 
-      {/* ── Mobile: drawer panel ── */}
       <aside
         className={[
           'lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl',
@@ -192,7 +203,6 @@ export default function Sidebar() {
         ].join(' ')}
         aria-label="Menú de navegación"
       >
-        {/* Close button inside drawer */}
         <button
           onClick={closeDrawer}
           aria-label="Cerrar menú"
