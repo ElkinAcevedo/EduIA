@@ -8,7 +8,7 @@ from .models import EntradaBitacora, AnalisisBitacora, Estudiante, Estrategia
 
 
 # ═══════════════════════════════════════════════════════════════════
-# ANÁLISIS DE BITÁCORA (sin cambios — sigue igual que antes)
+# ANÁLISIS DE BITÁCORA 
 # ═══════════════════════════════════════════════════════════════════
 
 def _preprocesar_entradas(entradas):
