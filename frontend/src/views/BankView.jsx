@@ -40,7 +40,6 @@ function CategoriaTag({ cat }) {
   )
 }
 
-// Barra de efectividad con color según valor
 function EficaciaBar({ value, label }) {
   const color = value >= 90 ? 'bg-red-400'
               : value >= 80 ? 'bg-amber-400'
