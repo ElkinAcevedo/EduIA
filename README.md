@@ -1,5 +1,12 @@
 # EduIA
 
+![React](https://img.shields.io/badge/React-18-black?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Django](https://img.shields.io/badge/Django-6.0-black?style=for-the-badge&logo=django&logoColor=0C4B33)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-black?style=for-the-badge&logo=postgresql&logoColor=4169E1)
+![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-black?style=for-the-badge&logo=googlegemini&logoColor=8E75B2)
+![Estado](https://img.shields.io/badge/Estado-En%20desarrollo-success?style=for-the-badge)
+![Licencia](https://img.shields.io/badge/Licencia-MIT-blue?style=for-the-badge)
+
 Plataforma web de apoyo pedagógico para el seguimiento y acompañamiento de estudiantes con Trastorno por Déficit de Atención e Hiperactividad (TDAH), impulsada por inteligencia artificial generativa.
 
 **Repositorio:** [github.com/ElkinAcevedo/Edutdah](https://github.com/ElkinAcevedo/Edutdah)
