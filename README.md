@@ -9,7 +9,6 @@
 
 Plataforma web de apoyo pedagógico para el seguimiento y acompañamiento de estudiantes con Trastorno por Déficit de Atención e Hiperactividad (TDAH), impulsada por inteligencia artificial generativa.
 
-**Repositorio:** [github.com/ElkinAcevedo/Edutdah](https://github.com/ElkinAcevedo/Edutdah)
 
 ---
 
